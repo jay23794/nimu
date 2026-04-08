@@ -13,6 +13,7 @@ async function boot(): Promise<void> {
   console.log('REDIS_URL set:', !!process.env.REDIS_URL);
 
   await connectDB();
+  console.log("####################");
   console.log('DB connected ✅');
 
   getRedis();
