@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "vite build && npm install --prefix server && npm run build --prefix server",
+    "preview": "vite preview",
+    "start": "npm start --prefix server"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.21.0",
