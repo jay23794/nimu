@@ -7,7 +7,7 @@ import { initSocket } from './socket/index.js';
 
 const PORT = process.env.PORT ?? 3001;
 
-async function boot() {
+async function boot(): Promise<void> {
   await connectDB();
   getRedis(); // eagerly connect + validate REDIS_URL
 

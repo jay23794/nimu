@@ -1,14 +1,25 @@
+import type { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { registerGameHandlers } from './game.handler.js';
 import { Player } from '../models/player.model.js';
+import type {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+} from '../types/index.js';
 
-export function initSocket(httpServer) {
-  const io = new Server(httpServer, {
-    cors: { origin: '*' },
-  });
+export function initSocket(httpServer: HttpServer): Server {
+  const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
+    httpServer,
+    { cors: { origin: '*' } },
+  );
 
   io.on('connection', async (socket) => {
-    const { guestId, nickname } = socket.handshake.auth;
+    const { guestId, nickname } = socket.handshake.auth as {
+      guestId?: string;
+      nickname?: string;
+    };
 
     if (!guestId || !nickname) {
       socket.disconnect(true);
@@ -18,12 +29,11 @@ export function initSocket(httpServer) {
     socket.data.guestId = guestId;
     socket.data.nickname = nickname;
 
-    // Upsert guest player record
     try {
       await Player.findOneAndUpdate(
         { guestId },
         { guestId, nickname, isGuest: true },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, new: true, setDefaultsOnInsert: true },
       );
     } catch (err) {
       console.error('Player upsert error:', err);

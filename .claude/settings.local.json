@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(find /Users/jay/Projects/Outsource/nimu/server/src -name \"*.js\" -delete)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

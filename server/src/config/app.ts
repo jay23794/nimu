@@ -1,8 +1,8 @@
-import express from 'express';
+import express, { Application } from 'express';
 import { roomRouter } from '../routes/room.routes.js';
 import { errorHandler } from '../middleware/error.middleware.js';
 
-export function createApp() {
+export function createApp(): Application {
   const app = express();
 
   app.use(express.json());

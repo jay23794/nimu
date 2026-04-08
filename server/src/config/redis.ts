@@ -1,8 +1,8 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 
-let redis;
+let redis: Redis | undefined;
 
-export function getRedis() {
+export function getRedis(): Redis {
   if (!redis) {
     const url = process.env.REDIS_URL;
     if (!url) throw new Error('REDIS_URL is not set');
@@ -14,7 +14,7 @@ export function getRedis() {
       lazyConnect: false,
     });
 
-    redis.on('error', (err) => console.error('Redis error:', err));
+    redis.on('error', (err: Error) => console.error('Redis error:', err));
     redis.on('connect', () => console.log('Redis connected'));
   }
   return redis;

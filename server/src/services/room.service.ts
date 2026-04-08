@@ -2,29 +2,30 @@ import { nanoid } from 'nanoid';
 import { getRedis } from '../config/redis.js';
 import { roomRepository } from '../repositories/room.repository.js';
 import { AppError } from '../middleware/error.middleware.js';
+import type { RedisRoomState, RoomPlayer } from '../types/index.js';
 
 const ROOM_TTL = 60 * 60 * 2; // 2 hours
 
-function generateCode() {
+function generateCode(): string {
   return nanoid(6).toUpperCase();
 }
 
-function redisKey(code) {
+function redisKey(code: string): string {
   return `room:${code}`;
 }
 
-async function setRedisRoom(state) {
+export async function setRedisRoom(state: RedisRoomState): Promise<void> {
   const redis = getRedis();
   await redis.set(redisKey(state.code), JSON.stringify(state), 'EX', ROOM_TTL);
 }
 
-async function getRedisRoom(code) {
+export async function getRedisRoom(code: string): Promise<RedisRoomState | null> {
   const redis = getRedis();
   const raw = await redis.get(redisKey(code));
-  return raw ? JSON.parse(raw) : null;
+  return raw ? (JSON.parse(raw) as RedisRoomState) : null;
 }
 
-function buildRedisState(code, players) {
+function buildRedisState(code: string, players: RoomPlayer[]): RedisRoomState {
   return {
     code,
     status: 'LOBBY',
@@ -33,13 +34,24 @@ function buildRedisState(code, players) {
     secretNumbers: {},
     guesses: [],
     turnCount: 0,
+    winnerGuestId: null,
   };
 }
 
 export const roomService = {
-  async createRoom({ guestId, nickname, isPublic = true, gameType = 'standard' }) {
+  async createRoom({
+    guestId,
+    nickname,
+    isPublic = true,
+    gameType = 'standard',
+  }: {
+    guestId: string;
+    nickname: string;
+    isPublic?: boolean;
+    gameType?: string;
+  }): Promise<{ code: string }> {
     const code = generateCode();
-    const players = [{ guestId, nickname, isHost: true }];
+    const players: RoomPlayer[] = [{ guestId, nickname, isHost: true }];
 
     await roomRepository.create({ code, players, isPublic, gameType });
     await setRedisRoom(buildRedisState(code, players));
@@ -47,7 +59,15 @@ export const roomService = {
     return { code };
   },
 
-  async joinRoom({ code, guestId, nickname }) {
+  async joinRoom({
+    code,
+    guestId,
+    nickname,
+  }: {
+    code: string;
+    guestId: string;
+    nickname: string;
+  }): Promise<{ code: string }> {
     const room = await roomRepository.findByCode(code);
     if (!room) throw new AppError('Room not found', 404);
     if (room.status !== 'LOBBY') throw new AppError('Room is not in lobby', 400);
@@ -56,46 +76,47 @@ export const roomService = {
       throw new AppError('Already in room', 400);
     }
 
-    room.players.push({ guestId, nickname, isHost: false });
+    room.players.push({ guestId, nickname, isHost: false } as RoomPlayer &
+      (typeof room.players)[number]);
     await room.save();
 
     const state = await getRedisRoom(code);
     if (!state) throw new AppError('Redis state not found', 500);
-    state.players = room.players.map((p) => p.toObject());
+    state.players = room.players.map((p) => p.toObject() as RoomPlayer);
     await setRedisRoom(state);
 
     return { code };
   },
 
-  async joinOrCreatePublic({ guestId, nickname }) {
+  async joinOrCreatePublic({
+    guestId,
+    nickname,
+  }: {
+    guestId: string;
+    nickname: string;
+  }): Promise<{ code: string }> {
     // Single atomic DB op — no locks needed
     const joined = await roomRepository.atomicJoinPublic({ guestId, nickname });
 
     if (joined) {
-      // Sync the new player list into Redis
       const state = await getRedisRoom(joined.code);
       if (state) {
-        state.players = joined.players.map((p) => p.toObject());
+        state.players = joined.players.map((p) => p.toObject() as RoomPlayer);
         await setRedisRoom(state);
       }
       return { code: joined.code };
     }
 
-    // No waiting room found — create one and wait for an opponent
     return this.createRoom({ guestId, nickname, isPublic: true });
   },
 
-  async getRoomState(code) {
+  async getRoomState(code: string): Promise<RedisRoomState> {
     const state = await getRedisRoom(code);
     if (!state) throw new AppError('Room not found', 404);
     return state;
   },
 
-  async getHistory(guestId) {
+  async getHistory(guestId: string) {
     return roomRepository.findFinishedByGuestId(guestId);
   },
-
-  // Exposed for socket layer
-  getRedisRoom,
-  setRedisRoom,
 };
