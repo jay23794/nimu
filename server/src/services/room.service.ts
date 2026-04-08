@@ -81,6 +81,7 @@ export const roomService = {
     await room.save();
 
     const state = await getRedisRoom(code);
+    console.log(state?.players)
     if (!state) throw new AppError('Redis state not found', 500);
     state.players = room.players.map((p) => p.toObject() as RoomPlayer);
     await setRedisRoom(state);

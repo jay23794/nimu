@@ -20,6 +20,7 @@ export const roomController = {
         nickname: string;
       };
       const result = await roomService.joinRoom({ code, guestId, nickname });
+      console.log(result)
       res.json(result);
     } catch (err) {
       next(err);

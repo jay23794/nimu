@@ -22,9 +22,10 @@ export default function Lobby() {
   const [error, setError] = useState(null)
 
   function ensurePlayer() {
-    if (player) return player
     const trimmed = handle.trim()
     if (!trimmed) return null
+    // If the typed name matches what's stored, reuse — otherwise re-register
+    if (player?.nickname === trimmed) return player
     return register(trimmed)
   }
 

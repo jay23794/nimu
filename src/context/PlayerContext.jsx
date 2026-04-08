@@ -17,7 +17,8 @@ export function PlayerProvider({ children }) {
   const [player, setPlayer] = useState(() => loadStored())
 
   function register(nickname) {
-    const p = { id: nanoid(), nickname: nickname.trim() }
+    // Keep the same id if the player already exists — only the nickname changes
+    const p = { id: player?.id ?? nanoid(), nickname: nickname.trim() }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(p))
     setPlayer(p)
     return p
