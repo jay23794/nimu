@@ -8,8 +8,15 @@ import { initSocket } from './socket/index.js';
 const PORT = process.env.PORT ?? 3001;
 
 async function boot(): Promise<void> {
+  console.log('Boot starting...');
+  console.log('MONGODB_URI set:', !!process.env.MONGODB_URI);
+  console.log('REDIS_URL set:', !!process.env.REDIS_URL);
+
   await connectDB();
-  getRedis(); // eagerly connect + validate REDIS_URL
+  console.log('DB connected ✅');
+
+  getRedis();
+  console.log('Redis connected ✅');
 
   const app = createApp();
   const server = http.createServer(app);
@@ -21,6 +28,6 @@ async function boot(): Promise<void> {
 }
 
 boot().catch((err) => {
-  console.error('Failed to start server:', err);
+  console.error('Failed to start server:', err);  // <-- this will now show the actual error
   process.exit(1);
 });
