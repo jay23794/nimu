@@ -26,6 +26,17 @@ export default function Room() {
     if (!ok) navigate('/', { replace: true })
   }, [])
 
+  // Warn before reload/close during an active game
+  useEffect(() => {
+    if (phase === 'game_over') return
+    const guard = (e) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', guard)
+    return () => window.removeEventListener('beforeunload', guard)
+  }, [phase])
+
   const me = player?.nickname
   const myGuestId = player?.id
   const opponent = players.find((p) => p.guestId !== myGuestId)
