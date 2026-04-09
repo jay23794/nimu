@@ -48,6 +48,14 @@ export function useGame() {
   useEffect(() => () => disconnectSocket(), [])
 
   function _attach(sock) {
+    // Re-join the socket.io room on every reconnect (handles Render's proxy
+    // timeouts and server restarts that drop the WebSocket connection)
+    sock.on('connect', () => {
+      if (codeRef.current) {
+        sock.emit('join_room', { code: codeRef.current })
+      }
+    })
+
     sock.on('room_update', (state) => {
       setRoomCode(state.code)
       setPlayers(state.players ?? [])
@@ -99,7 +107,10 @@ export function useGame() {
     if (!sock) return false
     codeRef.current = code
     _attach(sock)
-    sock.emit('join_room', { code })
+    // If already connected emit now; if not, the 'connect' handler will emit once connected
+    if (sock.connected) {
+      sock.emit('join_room', { code })
+    }
     return true
   }
 
