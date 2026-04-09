@@ -31,7 +31,10 @@ export default function Room() {
     if (phase === 'game_over') return
     const guard = (e) => {
       e.preventDefault()
-      e.returnValue = ''
+      // Safari requires a non-empty string assigned to returnValue AND returned
+      // from the handler; Chrome/Firefox only need preventDefault()
+      e.returnValue = 'If you leave, the game will end and your opponent wins.'
+      return e.returnValue
     }
     window.addEventListener('beforeunload', guard)
     return () => window.removeEventListener('beforeunload', guard)
