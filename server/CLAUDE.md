@@ -21,7 +21,7 @@ The server requires a `.env` file with:
 
 ## Architecture
 
-This is a real-time 2-player number-guessing game server. Players guess their opponent's secret 4-digit number; each guess returns how many digits are correct (no position info). First to guess all 4 wins.
+This is a real-time multiplayer number-guessing game server (2–15 players). Players each set a secret 4-digit number and take turns guessing any opponent's secret; each guess returns how many digits are correct (no position info). First to correctly guess all opponents' secrets wins.
 
 **Stack:** Node.js + TypeScript (ESM), Express, Socket.IO, MongoDB (Mongoose), Redis (ioredis)
 
@@ -47,7 +47,7 @@ Routes → Controllers → Services → Repositories → Models
 ### Socket.IO Game Flow
 
 Events handled in `src/socket/game.handler.ts`:
-1. `join_room` — Player joins; auto-transitions to `SET_NUMBER` when 2 players are present
+1. `join_room` — Player joins; host starts the game which transitions to `SET_NUMBER`
 2. `set_number` — Each player sets their secret number; transitions to `GUESSING` once both are set
 3. `make_guess` — Turn-based guessing; broadcasts result with correct-digit count
 4. `rematch` — Resets the room for another round
