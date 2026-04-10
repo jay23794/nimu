@@ -18,7 +18,7 @@ export default function Lobby() {
   const location = useLocation()
   const { player, register } = usePlayer()
   const [handle, setHandle] = useState(player?.nickname || '')
-  const [joinCode, setJoinCode] = useState(location.state?.joinCode || '')
+  const [joinCode, setJoinCode] = useState('')
   const [loading, setLoading] = useState(null) // 'create' | 'random' | 'join' | null
   const [error, setError] = useState(null)
   const [gameMode, setGameMode] = useState('shared') // 'standard' | 'shared'
