@@ -29,7 +29,8 @@ function generateSharedSecret(): string {
 
 /**
  * Count how many digits in `guess` appear anywhere in `secret` (no position, no duplicates).
- * secret="5189", guess="5100" → 2  (digits 5 and 1 are in secret)
+ * secret="1234", guess="3981" → 2  (digits 3 and 1 appear in secret)
+ * secret="1234", guess="4321" → 4  (all digits present, but not an exact match → no win)
  */
 function countCorrectDigits(secret: string, guess: string): number {
   const seen = new Set(secret.split(''));
@@ -251,7 +252,7 @@ export function registerGameHandlers(io: AppServer, socket: AppSocket): void {
         turnNumber: state.turnCount,
       };
 
-      const isWin = correctDigits === 4;
+      const isWin = guessStr === secret;
 
       if (isWin) {
         state.status = 'FINISHED';
