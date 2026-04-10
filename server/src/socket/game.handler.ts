@@ -17,6 +17,12 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerE
 const MAX_PLAYERS = 15;
 const SHARED_KEY = '__shared__';
 
+// Grace-period timers so brief network hiccups don't drop players.
+// Key: `${roomCode}:${guestId}`
+const LOBBY_GRACE_MS = 12_000;
+const GAME_GRACE_MS  = 20_000;
+const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 /** Generate a 4-digit string with 4 unique random digits (0–9). */
 function generateSharedSecret(): string {
   const pool = Array.from({ length: 10 }, (_, i) => i);
@@ -92,6 +98,14 @@ export function registerGameHandlers(io: AppServer, socket: AppSocket): void {
           await roomService.joinRoom({ code: rawCode, guestId, nickname });
           roomCode = rawCode;
         }
+      }
+
+      // Cancel any pending disconnect grace timer for this player
+      const timerKey = `${roomCode}:${guestId}`;
+      const pending = disconnectTimers.get(timerKey);
+      if (pending) {
+        clearTimeout(pending);
+        disconnectTimers.delete(timerKey);
       }
 
       socket.data.code = roomCode;
@@ -252,7 +266,7 @@ export function registerGameHandlers(io: AppServer, socket: AppSocket): void {
         turnNumber: state.turnCount,
       };
 
-      const isWin = guessStr === secret;
+      const isWin = correctDigits === 4;
 
       if (isWin) {
         state.status = 'FINISHED';
@@ -342,72 +356,90 @@ export function registerGameHandlers(io: AppServer, socket: AppSocket): void {
       const state = await getRedisRoom(code);
       if (!state) return;
 
-      io.to(code).emit('player_left', { guestId, nickname });
+      const timerKey = `${code}:${guestId}`;
 
       if (state.status === 'LOBBY') {
-        // Just remove from players list in lobby
-        state.players = state.players.filter((p) => p.guestId !== guestId);
-        await setRedisRoom(state);
-        await roomRepository.updateByCode(code, { players: state.players });
-        io.to(code).emit('room_update', state);
+        // Grace period: if the player reconnects within LOBBY_GRACE_MS, do nothing.
+        disconnectTimers.set(timerKey, setTimeout(async () => {
+          disconnectTimers.delete(timerKey);
+          const fresh = await getRedisRoom(code);
+          if (!fresh || fresh.status !== 'LOBBY') return;
+          if (!fresh.players.some((p) => p.guestId === guestId)) return;
+          fresh.players = fresh.players.filter((p) => p.guestId !== guestId);
+          await setRedisRoom(fresh);
+          await roomRepository.updateByCode(code, { players: fresh.players });
+          io.to(code).emit('player_left', { guestId, nickname });
+          io.to(code).emit('room_update', fresh);
+        }, LOBBY_GRACE_MS));
         return;
       }
 
       if (state.status === 'SET_NUMBER' || state.status === 'GUESSING') {
-        // Capture index before removal, then remove disconnecting player
+        // During active game, if it was their turn advance it immediately so
+        // others aren't blocked, but keep the player in the room for GAME_GRACE_MS
+        // so a brief reconnect lets them continue.
         const wasTheirTurn = state.currentTurn === guestId;
         const oldIdx = state.turnOrder.indexOf(guestId);
-        state.turnOrder = state.turnOrder.filter((id) => id !== guestId);
-        state.players = state.players.filter((p) => p.guestId !== guestId);
 
-        // If only one player remains, they win
-        if (state.turnOrder.length < 2) {
-          const lastGuestId = state.turnOrder[0] ?? null;
-          const lastPlayer = lastGuestId ? findPlayer(state, lastGuestId) : null;
-
-          state.status = 'FINISHED';
-          state.winnerGuestId = lastGuestId;
-          await setRedisRoom(state);
-
-          if (lastGuestId) {
-            await roomRepository.setFinished(code, lastGuestId);
-          }
-
-          io.to(code).emit('phase_change', { phase: 'FINISHED' });
-          if (lastPlayer) {
-            io.to(code).emit('game_over', {
-              winnerGuestId: lastPlayer.guestId,
-              winnerNickname: lastPlayer.nickname,
-              crackedGuestId: guestId,
-              crackedNickname: nickname,
-              secret: state.secretNumbers[guestId] ?? null,
-              totalTurns: state.turnCount,
-              reason: 'player_disconnected',
-            });
-          }
-          return;
-        }
-
-        // Rebuild target map with remaining players
-        if (state.gameMode === 'shared') {
-          state.turnOrder.forEach((id) => { state.targetMap[id] = SHARED_KEY; });
-        } else {
-          state.targetMap = buildTargetMap(state.turnOrder);
-        }
-        delete state.secretNumbers[guestId];
-
-        // If it was the disconnecting player's turn, give the turn to whoever
-        // was next in the old order (now at the same index, or wrapped to 0)
-        if (wasTheirTurn) {
-          const newIdx = oldIdx < state.turnOrder.length ? oldIdx : 0;
+        if (wasTheirTurn && state.status === 'GUESSING') {
+          const newIdx = (oldIdx + 1) % state.turnOrder.length;
           state.currentTurn = state.turnOrder[newIdx];
-        }
-
-        await setRedisRoom(state);
-        io.to(code).emit('room_update', state);
-        if (state.status === 'GUESSING') {
+          await setRedisRoom(state);
           io.to(code).emit('your_turn', { guestId: state.currentTurn! });
         }
+
+        disconnectTimers.set(timerKey, setTimeout(async () => {
+          disconnectTimers.delete(timerKey);
+          const fresh = await getRedisRoom(code);
+          if (!fresh || fresh.status === 'LOBBY' || fresh.status === 'FINISHED') return;
+          if (!fresh.players.some((p) => p.guestId === guestId)) return;
+
+          const freshOldIdx = fresh.turnOrder.indexOf(guestId);
+          const freshWasTurn = fresh.currentTurn === guestId;
+          fresh.turnOrder = fresh.turnOrder.filter((id) => id !== guestId);
+          fresh.players   = fresh.players.filter((p) => p.guestId !== guestId);
+
+          if (fresh.turnOrder.length < 2) {
+            const lastGuestId = fresh.turnOrder[0] ?? null;
+            const lastPlayer  = lastGuestId ? findPlayer(fresh, lastGuestId) : null;
+            fresh.status = 'FINISHED';
+            fresh.winnerGuestId = lastGuestId;
+            await setRedisRoom(fresh);
+            if (lastGuestId) await roomRepository.setFinished(code, lastGuestId);
+            io.to(code).emit('phase_change', { phase: 'FINISHED' });
+            if (lastPlayer) {
+              io.to(code).emit('game_over', {
+                winnerGuestId: lastPlayer.guestId,
+                winnerNickname: lastPlayer.nickname,
+                crackedGuestId: guestId,
+                crackedNickname: nickname,
+                secret: fresh.secretNumbers[guestId] ?? null,
+                totalTurns: fresh.turnCount,
+                reason: 'player_disconnected',
+              });
+            }
+            return;
+          }
+
+          if (fresh.gameMode === 'shared') {
+            fresh.turnOrder.forEach((id) => { fresh.targetMap[id] = SHARED_KEY; });
+          } else {
+            fresh.targetMap = buildTargetMap(fresh.turnOrder);
+          }
+          delete fresh.secretNumbers[guestId];
+
+          if (freshWasTurn) {
+            const newIdx = freshOldIdx < fresh.turnOrder.length ? freshOldIdx : 0;
+            fresh.currentTurn = fresh.turnOrder[newIdx];
+          }
+
+          await setRedisRoom(fresh);
+          io.to(code).emit('player_left', { guestId, nickname });
+          io.to(code).emit('room_update', fresh);
+          if (fresh.status === 'GUESSING') {
+            io.to(code).emit('your_turn', { guestId: fresh.currentTurn! });
+          }
+        }, GAME_GRACE_MS));
       }
     } catch (err) {
       console.error('[disconnecting]', err);

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Box,
   VStack,
@@ -15,12 +15,26 @@ import { roomsApi } from '../services/rooms'
 
 export default function Lobby() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { player, register } = usePlayer()
   const [handle, setHandle] = useState(player?.nickname || '')
-  const [joinCode, setJoinCode] = useState('')
+  const [joinCode, setJoinCode] = useState(location.state?.joinCode || '')
   const [loading, setLoading] = useState(null) // 'create' | 'random' | 'join' | null
   const [error, setError] = useState(null)
   const [gameMode, setGameMode] = useState('shared') // 'standard' | 'shared'
+  const [stats, setStats] = useState(null)
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats')
+        if (res.ok) setStats(await res.json())
+      } catch {}
+    }
+    fetchStats()
+    const id = setInterval(fetchStats, 15_000)
+    return () => clearInterval(id)
+  }, [])
 
   function ensurePlayer() {
     const trimmed = handle.trim()
@@ -266,6 +280,48 @@ export default function Lobby() {
           <Text color="gray.600" fontSize="12px">Take turns guessing — see how many digits match.</Text>
           <Text color="gray.600" fontSize="12px">First to crack the code wins.</Text>
         </VStack>
+
+        {/* Live stats */}
+        {stats && (
+          <HStack
+            justify="center"
+            gap={5}
+            pt={1}
+            borderTop="1px solid"
+            borderColor="gray.800"
+          >
+            <VStack gap={0} align="center">
+              <Text color="brand.300" fontSize="14px" fontWeight="700" fontFamily="mono">
+                {stats.onlineUsers}
+              </Text>
+              <Text color="gray.600" fontSize="10px" letterSpacing="1px" textTransform="uppercase">
+                Online
+              </Text>
+            </VStack>
+            <Box w="1px" h="28px" bg="gray.800" />
+            <VStack gap={0} align="center">
+              <Text color="gray.300" fontSize="14px" fontWeight="700" fontFamily="mono">
+                {stats.totalVisits.toLocaleString()}
+              </Text>
+              <Text color="gray.600" fontSize="10px" letterSpacing="1px" textTransform="uppercase">
+                Total Visits
+              </Text>
+            </VStack>
+            {stats.recentVisitors?.[0] && (
+              <>
+                <Box w="1px" h="28px" bg="gray.800" />
+                <VStack gap={0} align="center">
+                  <Text color="gray.400" fontSize="11px" fontWeight="600" fontFamily="mono">
+                    {stats.recentVisitors[0].ip}
+                  </Text>
+                  <Text color="gray.600" fontSize="10px" letterSpacing="1px" textTransform="uppercase">
+                    Last Visit
+                  </Text>
+                </VStack>
+              </>
+            )}
+          </HStack>
+        )}
       </VStack>
     </Box>
   )

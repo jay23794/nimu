@@ -79,7 +79,7 @@ export const roomService = {
     if (room.status !== 'LOBBY') throw new AppError('Room is not in lobby', 400);
     if (room.players.length >= 15) throw new AppError('Room is full', 400);
     if (room.players.some((p) => p.guestId === guestId)) {
-      throw new AppError('Already in room', 400);
+      return { code };  // already a member — treat as reconnect
     }
 
     room.players.push({ guestId, nickname, isHost: false } as RoomPlayer &
