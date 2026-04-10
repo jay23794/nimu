@@ -224,67 +224,67 @@ export default function GameBoard({
             )}
           </Box>
 
-          {/* Guess input — isMyTurn gate removed (round-robin UI hidden) */}
-          {true && (
-            <Box
-              bg="gray.900"
-              border="1px solid"
-              borderColor="gray.800"
-              borderRadius="xl"
-              p={5}
-            >
-              <VStack gap={4} align="stretch">
-                <Text
-                  color="gray.500"
-                  fontSize="11px"
-                  fontWeight="700"
-                  letterSpacing="2px"
-                  textTransform="uppercase"
-                  textAlign="center"
-                >
-                  Your Guess
-                </Text>
-                <HStack justify="center" gap={3}>
-                  {digits.map((d, i) => (
-                    <Input
-                      key={i}
-                      ref={refs[i]}
-                      value={d}
-                      onChange={e => handleChange(i, e.target.value)}
-                      onKeyDown={e => handleKeyDown(i, e)}
-                      maxLength={1}
-                      inputMode="numeric"
-                      w="58px"
-                      h="68px"
-                      bg="gray.800"
-                      border="2px solid"
-                      borderColor={d ? 'brand.300' : 'gray.700'}
-                      _focus={{ borderColor: 'brand.300', boxShadow: 'none' }}
-                      borderRadius="xl"
-                      color="brand.300"
-                      fontSize="2xl"
-                      fontWeight="700"
-                      textAlign="center"
-                      _placeholder={{ color: 'gray.700' }}
-                    />
-                  ))}
-                </HStack>
-                <Button
-                  bg={allFilled ? 'brand.300' : 'gray.800'}
-                  color={allFilled ? 'gray.950' : 'gray.600'}
-                  fontWeight="700"
-                  letterSpacing="1px"
-                  w="full"
-                  _hover={allFilled ? { bg: 'brand.400' } : {}}
-                  borderRadius="lg"
-                  disabled={!allFilled}
-                  onClick={handleGuess}
-                >
-                  GUESS →
-                </Button>
-              </VStack>
-            </Box>
-          )}
+          {/* Guess input */}
+          <Box
+            bg="gray.900"
+            border="1px solid"
+            borderColor={isMyTurn ? 'gray.800' : 'gray.900'}
+            borderRadius="xl"
+            p={5}
+            opacity={isMyTurn ? 1 : 0.4}
+          >
+            <VStack gap={4} align="stretch">
+              <Text
+                color={isMyTurn ? 'gray.500' : 'gray.700'}
+                fontSize="11px"
+                fontWeight="700"
+                letterSpacing="2px"
+                textTransform="uppercase"
+                textAlign="center"
+              >
+                {isMyTurn ? 'Your Guess' : `Waiting for ${currentTurnPlayer?.nickname ?? '…'}`}
+              </Text>
+              <HStack justify="center" gap={3}>
+                {digits.map((d, i) => (
+                  <Input
+                    key={i}
+                    ref={refs[i]}
+                    value={d}
+                    onChange={e => handleChange(i, e.target.value)}
+                    onKeyDown={e => handleKeyDown(i, e)}
+                    maxLength={1}
+                    inputMode="numeric"
+                    w="58px"
+                    h="68px"
+                    bg="gray.800"
+                    border="2px solid"
+                    borderColor={d ? 'brand.300' : 'gray.700'}
+                    _focus={{ borderColor: 'brand.300', boxShadow: 'none' }}
+                    borderRadius="xl"
+                    color="brand.300"
+                    fontSize="2xl"
+                    fontWeight="700"
+                    textAlign="center"
+                    _placeholder={{ color: 'gray.700' }}
+                    disabled={!isMyTurn}
+                  />
+                ))}
+              </HStack>
+              <Button
+                bg={allFilled && isMyTurn ? 'brand.300' : 'gray.800'}
+                color={allFilled && isMyTurn ? 'gray.950' : 'gray.600'}
+                fontWeight="700"
+                letterSpacing="1px"
+                w="full"
+                _hover={allFilled && isMyTurn ? { bg: 'brand.400' } : {}}
+                borderRadius="lg"
+                disabled={!allFilled || !isMyTurn}
+                onClick={handleGuess}
+              >
+                GUESS →
+              </Button>
+            </VStack>
+          </Box>
         </VStack>
       </Box>
     </>

@@ -32,6 +32,12 @@ export default function WaitingLobby({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleWhatsAppShare = () => {
+    const message = `Join my NIMU game! 🎮\nEnter code *${roomCode}* to play.`
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   const playerCount = players.length
   const canStart = isHost && playerCount >= 2
 
@@ -154,6 +160,20 @@ export default function WaitingLobby({
                 border="none"
               >
                 {copied ? '✓ COPIED' : 'COPY CODE'}
+              </Text>
+              <Text
+                as="button"
+                color="gray.400"
+                fontSize="sm"
+                fontWeight="700"
+                letterSpacing="1px"
+                cursor="pointer"
+                _hover={{ color: '#25D366' }}
+                onClick={handleWhatsAppShare}
+                bg="transparent"
+                border="none"
+              >
+                📲 SHARE ON WHATSAPP
               </Text>
             </VStack>
           </Box>

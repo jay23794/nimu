@@ -10,6 +10,7 @@ import {
 
 export default function SetNumber({ numberSet = false, onLock, playersReady = 0, totalPlayers = 2 }) {
   const [digits, setDigits] = useState(['', '', '', ''])
+  const [locking, setLocking] = useState(false)
   const refs = [useRef(), useRef(), useRef(), useRef()]
 
   const handleChange = (i, val) => {
@@ -29,7 +30,8 @@ export default function SetNumber({ numberSet = false, onLock, playersReady = 0,
   const allFilled = digits.every(d => d !== '')
 
   const handleLock = () => {
-    if (!allFilled) return
+    if (!allFilled || locking) return
+    setLocking(true)
     onLock?.(digits.join(''))
   }
 
@@ -85,22 +87,23 @@ export default function SetNumber({ numberSet = false, onLock, playersReady = 0,
                   textAlign="center"
                   _placeholder={{ color: 'gray.700' }}
                   autoFocus={i === 0}
+                  disabled={locking}
                 />
               ))}
             </HStack>
 
             <Button
               w="full"
-              bg={allFilled ? 'brand.300' : 'gray.800'}
-              color={allFilled ? 'gray.950' : 'gray.600'}
+              bg={allFilled && !locking ? 'brand.300' : 'gray.800'}
+              color={allFilled && !locking ? 'gray.950' : 'gray.600'}
               fontWeight="700"
               letterSpacing="1px"
-              _hover={allFilled ? { bg: 'brand.400' } : {}}
+              _hover={allFilled && !locking ? { bg: 'brand.400' } : {}}
               borderRadius="lg"
-              disabled={!allFilled}
+              disabled={!allFilled || locking}
               onClick={handleLock}
             >
-              LOCK IT IN →
+              {locking ? 'LOCKING…' : 'LOCK IT IN →'}
             </Button>
           </VStack>
         ) : (
