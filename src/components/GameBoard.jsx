@@ -101,11 +101,12 @@ export default function GameBoard({
     }
   }, [guesses])
 
-  useEffect(() => {
-    if (isMyTurn) {
-      setTimeout(() => refs[0].current?.focus(), 50)
-    }
-  }, [isMyTurn])
+  // round-robin auto-focus commented out
+  // useEffect(() => {
+  //   if (isMyTurn) {
+  //     setTimeout(() => refs[0].current?.focus(), 50)
+  //   }
+  // }, [isMyTurn])
 
   const handleChange = (i, val) => {
     const ch = val.replace(/\D/g, '').slice(-1)
@@ -145,7 +146,7 @@ export default function GameBoard({
         py={10}
       >
         <VStack gap={4} w="full" maxW="480px" align="stretch">
-          {/* Turn banner */}
+          {/* Turn banner — commented out (round-robin UI hidden)
           <Box
             bg={isMyTurn ? 'rgba(200, 240, 96, 0.08)' : 'gray.900'}
             border="1px solid"
@@ -169,6 +170,7 @@ export default function GameBoard({
                 : `${activePlayerName}'s Turn…`}
             </Text>
           </Box>
+          */}
 
           {/* My secret number */}
           {mySecret && (
@@ -222,8 +224,8 @@ export default function GameBoard({
             )}
           </Box>
 
-          {/* Guess input */}
-          {isMyTurn && (
+          {/* Guess input — isMyTurn gate removed (round-robin UI hidden) */}
+          {true && (
             <Box
               bg="gray.900"
               border="1px solid"

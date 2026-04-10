@@ -20,7 +20,7 @@ export default function Lobby() {
   const [joinCode, setJoinCode] = useState('')
   const [loading, setLoading] = useState(null) // 'create' | 'random' | 'join' | null
   const [error, setError] = useState(null)
-  const [gameMode, setGameMode] = useState('standard') // 'standard' | 'shared'
+  const [gameMode, setGameMode] = useState('shared') // 'standard' | 'shared'
 
   function ensurePlayer() {
     const trimmed = handle.trim()
@@ -148,7 +148,7 @@ export default function Lobby() {
               </Text>
               <HStack gap={2}>
                 {[
-                  { value: 'standard', label: 'Round Robin', desc: 'Each player has a secret' },
+                  // { value: 'standard', label: 'Round Robin', desc: 'Each player has a secret' },
                   { value: 'shared',   label: 'Shared Secret', desc: 'One auto-generated number' },
                 ].map(({ value, label, desc }) => (
                   <Box

@@ -108,7 +108,7 @@ export default function WaitingLobby({
                 letterSpacing="2px"
                 textTransform="uppercase"
               >
-                {gameMode === 'shared' ? '⚡ Shared Secret' : '↺ Round Robin'}
+                {gameMode === 'shared' ? '⚡ Shared Secret' : null /* '↺ Round Robin' — round-robin label commented out */}
               </Text>
             </Box>
           </VStack>
