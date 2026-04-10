@@ -7,6 +7,7 @@ export const roomRepository = {
     players: RoomPlayer[];
     isPublic: boolean;
     gameType: string;
+    gameMode?: string;
   }): Promise<IRoom> {
     return Room.create(data);
   },

@@ -22,8 +22,8 @@ function badgeColor(n) {
   return '#fc8181'               // red.300 — 0 correct, clearly wrong
 }
 
-// guess shape: { byGuestId, byNickname, guess, correctDigits, turnNumber }
-function GuessRow({ guess, index, isMe }) {
+// guess shape: { byGuestId, byNickname, targetNickname, guess, correctDigits, turnNumber }
+function GuessRow({ guess, index, isMe, hideTarget = false }) {
   return (
     <HStack
       bg={isMe ? 'rgba(200, 240, 96, 0.08)' : 'gray.800'}
@@ -38,9 +38,16 @@ function GuessRow({ guess, index, isMe }) {
       <Text color="gray.600" fontSize="11px" w="24px" flexShrink={0}>
         #{index + 1}
       </Text>
-      <Text color="gray.500" fontSize="sm" flex={1}>
-        {guess.byNickname}
-      </Text>
+      <VStack gap={0} flex={1} align="start">
+        <Text color="gray.500" fontSize="sm">
+          {guess.byNickname}
+        </Text>
+        {!hideTarget && guess.targetNickname && (
+          <Text color="gray.700" fontSize="10px">
+            → {guess.targetNickname}
+          </Text>
+        )}
+      </VStack>
       <Text
         fontFamily="mono"
         fontSize="15px"
@@ -78,7 +85,9 @@ export default function GameBoard({
   myName = 'ghost',
   myGuestId = null,
   mySecret = null,
-  opponentName = 'cipher',
+  currentTurnPlayer = null,
+  myTargetName = null,
+  isSharedMode = false,
   guesses = [],
   onGuess,
 }) {
@@ -121,7 +130,7 @@ export default function GameBoard({
     refs[0].current?.focus()
   }
 
-  const currentTurn = isMyTurn ? myName : opponentName
+  const activePlayerName = isMyTurn ? myName : (currentTurnPlayer?.nickname || '…')
 
   return (
     <>
@@ -153,39 +162,13 @@ export default function GameBoard({
               letterSpacing="2px"
               textTransform="uppercase"
             >
-              {isMyTurn ? '⚡ Your Turn' : `${opponentName}'s Turn…`}
+              {isMyTurn
+                ? isSharedMode
+                  ? '⚡ Your Turn — Guess the secret!'
+                  : `⚡ Your Turn — Guessing ${myTargetName || '…'}'s number`
+                : `${activePlayerName}'s Turn…`}
             </Text>
           </Box>
-
-          {/* Player tags */}
-          <HStack gap={3}>
-            {[myName, opponentName].map(name => {
-              const active = name === currentTurn
-              return (
-                <Box
-                  key={name}
-                  flex={1}
-                  border="1px solid"
-                  borderColor={active ? 'brand.300' : 'gray.800'}
-                  borderRadius="lg"
-                  px={3}
-                  py={2}
-                  textAlign="center"
-                >
-                  <Text
-                    color={active ? 'brand.300' : 'gray.600'}
-                    fontWeight="700"
-                    fontSize="sm"
-                    letterSpacing="1px"
-                    textTransform="uppercase"
-                  >
-                    {name}
-                    {name === myName ? ' (you)' : ''}
-                  </Text>
-                </Box>
-              )
-            })}
-          </HStack>
 
           {/* My secret number */}
           {mySecret && (
@@ -227,7 +210,13 @@ export default function GameBoard({
             ) : (
               <VStack gap={2} align="stretch">
                 {guesses.map((g, i) => (
-                  <GuessRow key={i} guess={g} index={i} isMe={myGuestId ? g.byGuestId === myGuestId : g.byNickname === myName} />
+                  <GuessRow
+                    key={i}
+                    guess={g}
+                    index={i}
+                    isMe={myGuestId ? g.byGuestId === myGuestId : g.byNickname === myName}
+                    hideTarget={isSharedMode}
+                  />
                 ))}
               </VStack>
             )}

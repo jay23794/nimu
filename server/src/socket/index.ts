@@ -9,6 +9,12 @@ import type {
   SocketData,
 } from '../types/index.js';
 
+let _io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData> | null = null;
+
+export function getIo() {
+  return _io;
+}
+
 export function initSocket(httpServer: HttpServer): Server {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
     httpServer,
@@ -48,5 +54,6 @@ export function initSocket(httpServer: HttpServer): Server {
     });
   });
 
+  _io = io;
   return io;
 }

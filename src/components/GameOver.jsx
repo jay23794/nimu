@@ -9,11 +9,14 @@ import {
 
 export default function GameOver({
   result = 'win',
+  isSharedMode = false,
+  winnerName = null,
+  crackedPlayerName = null,
   theirNumber,
   myNumber,
   totalTurns = 0,
   myGuesses = 0,
-  theirGuesses = 0,
+  totalPlayers = 2,
   onRematch,
   onLeave,
 }) {
@@ -23,10 +26,12 @@ export default function GameOver({
   const emoji = isDisconnect ? '🔌' : isWin ? '🏆' : '💀'
   const headingColor = isWin ? 'brand.300' : isDisconnect ? 'gray.400' : 'red.400'
   const heading = isDisconnect
-    ? 'OPPONENT BAILED'
+    ? 'PLAYER LEFT'
     : isWin
     ? 'YOU CRACKED IT'
-    : 'BUSTED'
+    : isSharedMode
+    ? `${winnerName || 'SOMEONE'} CRACKED IT`
+    : `${winnerName || 'SOMEONE'} WINS`
 
   const numberColor = isWin ? 'brand.300' : 'red.400'
 
@@ -50,9 +55,15 @@ export default function GameOver({
             color={headingColor}
             letterSpacing="2px"
             textTransform="uppercase"
+            textAlign="center"
           >
             {heading}
           </Text>
+          {!isWin && !isDisconnect && !isSharedMode && crackedPlayerName && (
+            <Text color="gray.500" fontSize="sm">
+              {winnerName} cracked {crackedPlayerName}'s number
+            </Text>
+          )}
         </VStack>
 
         <VStack gap={3} w="full" align="stretch">
@@ -73,7 +84,11 @@ export default function GameOver({
                 textTransform="uppercase"
                 mb={3}
               >
-                The Number Was
+                {isSharedMode
+                  ? 'The Secret Number Was'
+                  : isWin
+                  ? 'The Number Was'
+                  : `${crackedPlayerName || 'Their'}'s Number`}
               </Text>
               <Text
                 fontFamily="mono"
@@ -132,7 +147,7 @@ export default function GameOver({
           {[
             { label: 'TOTAL TURNS', value: totalTurns },
             { label: 'YOUR GUESSES', value: myGuesses },
-            { label: 'THEIR GUESSES', value: theirGuesses },
+            { label: 'PLAYERS', value: totalPlayers },
           ].map(({ label, value }) => (
             <VStack key={label} flex={1} gap={1} py={4} px={2} align="center">
               <Text fontFamily="mono" fontSize="22px" fontWeight="700" color="gray.100">

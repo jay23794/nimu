@@ -1,8 +1,9 @@
 import { nanoid } from 'nanoid';
 import { getRedis } from '../config/redis.js';
+import { getIo } from '../socket/index.js';
 import { roomRepository } from '../repositories/room.repository.js';
 import { AppError } from '../middleware/error.middleware.js';
-import type { RedisRoomState, RoomPlayer } from '../types/index.js';
+import type { RedisRoomState, RoomPlayer, GameMode } from '../types/index.js';
 
 const ROOM_TTL = 60 * 60 * 2; // 2 hours
 
@@ -25,12 +26,15 @@ export async function getRedisRoom(code: string): Promise<RedisRoomState | null>
   return raw ? (JSON.parse(raw) as RedisRoomState) : null;
 }
 
-function buildRedisState(code: string, players: RoomPlayer[]): RedisRoomState {
+function buildRedisState(code: string, players: RoomPlayer[], gameMode: GameMode = 'standard'): RedisRoomState {
   return {
     code,
     status: 'LOBBY',
+    gameMode,
     players,
-    currentTurn: players[0]?.guestId ?? null,
+    currentTurn: null,
+    turnOrder: [],
+    targetMap: {},
     secretNumbers: {},
     guesses: [],
     turnCount: 0,
@@ -44,17 +48,19 @@ export const roomService = {
     nickname,
     isPublic = true,
     gameType = 'standard',
+    gameMode = 'standard',
   }: {
     guestId: string;
     nickname: string;
     isPublic?: boolean;
     gameType?: string;
+    gameMode?: GameMode;
   }): Promise<{ code: string }> {
     const code = generateCode();
     const players: RoomPlayer[] = [{ guestId, nickname, isHost: true }];
 
-    await roomRepository.create({ code, players, isPublic, gameType });
-    await setRedisRoom(buildRedisState(code, players));
+    await roomRepository.create({ code, players, isPublic, gameType, gameMode });
+    await setRedisRoom(buildRedisState(code, players, gameMode));
 
     return { code };
   },
@@ -71,7 +77,7 @@ export const roomService = {
     const room = await roomRepository.findByCode(code);
     if (!room) throw new AppError('Room not found', 404);
     if (room.status !== 'LOBBY') throw new AppError('Room is not in lobby', 400);
-    if (room.players.length >= 2) throw new AppError('Room is full', 400);
+    if (room.players.length >= 15) throw new AppError('Room is full', 400);
     if (room.players.some((p) => p.guestId === guestId)) {
       throw new AppError('Already in room', 400);
     }
@@ -81,10 +87,12 @@ export const roomService = {
     await room.save();
 
     const state = await getRedisRoom(code);
-    console.log(state?.players)
     if (!state) throw new AppError('Redis state not found', 500);
     state.players = room.players.map((p) => p.toObject() as RoomPlayer);
     await setRedisRoom(state);
+
+    // Notify any already-connected sockets in the room immediately
+    getIo()?.to(code).emit('room_update', state);
 
     return { code };
   },
@@ -104,6 +112,8 @@ export const roomService = {
       if (state) {
         state.players = joined.players.map((p) => p.toObject() as RoomPlayer);
         await setRedisRoom(state);
+        // Notify already-connected sockets immediately
+        getIo()?.to(joined.code).emit('room_update', state);
       }
       return { code: joined.code };
     }

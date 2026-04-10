@@ -4,8 +4,12 @@ import { roomService } from '../services/room.service.js';
 export const roomController = {
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { guestId, nickname } = req.body as { guestId: string; nickname: string };
-      const result = await roomService.createRoom({ guestId, nickname });
+      const { guestId, nickname, gameMode } = req.body as {
+        guestId: string;
+        nickname: string;
+        gameMode?: 'standard' | 'shared';
+      };
+      const result = await roomService.createRoom({ guestId, nickname, gameMode });
       res.status(201).json(result);
     } catch (err) {
       next(err);

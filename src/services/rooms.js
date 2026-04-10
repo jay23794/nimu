@@ -10,8 +10,8 @@ async function post(path, body) {
 }
 
 export const roomsApi = {
-  create: ({ guestId, nickname }) =>
-    post('/api/rooms/create', { guestId, nickname }),
+  create: ({ guestId, nickname, gameMode = 'standard' }) =>
+    post('/api/rooms/create', { guestId, nickname, gameMode }),
 
   join: ({ code, guestId, nickname }) =>
     post('/api/rooms/join', { code, guestId, nickname }),

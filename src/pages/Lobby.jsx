@@ -20,6 +20,7 @@ export default function Lobby() {
   const [joinCode, setJoinCode] = useState('')
   const [loading, setLoading] = useState(null) // 'create' | 'random' | 'join' | null
   const [error, setError] = useState(null)
+  const [gameMode, setGameMode] = useState('standard') // 'standard' | 'shared'
 
   function ensurePlayer() {
     const trimmed = handle.trim()
@@ -46,7 +47,7 @@ export default function Lobby() {
   }
 
   const handleCreate = () =>
-    call((p) => roomsApi.create({ guestId: p.id, nickname: p.nickname }), 'create')
+    call((p) => roomsApi.create({ guestId: p.id, nickname: p.nickname, gameMode }), 'create')
 
   const handleRandom = () =>
     call((p) => roomsApi.random({ guestId: p.id, nickname: p.nickname }), 'random')
@@ -133,6 +134,53 @@ export default function Lobby() {
               </Text>
               <Separator flex={1} borderColor="gray.800" />
             </HStack>
+
+            {/* Game Mode selector */}
+            <VStack gap={2} align="stretch">
+              <Text
+                color="gray.500"
+                fontSize="11px"
+                fontWeight="700"
+                letterSpacing="2px"
+                textTransform="uppercase"
+              >
+                Game Mode
+              </Text>
+              <HStack gap={2}>
+                {[
+                  { value: 'standard', label: 'Round Robin', desc: 'Each player has a secret' },
+                  { value: 'shared',   label: 'Shared Secret', desc: 'One auto-generated number' },
+                ].map(({ value, label, desc }) => (
+                  <Box
+                    key={value}
+                    flex={1}
+                    as="button"
+                    onClick={() => setGameMode(value)}
+                    bg={gameMode === value ? 'rgba(200, 240, 96, 0.08)' : 'gray.800'}
+                    border="1px solid"
+                    borderColor={gameMode === value ? 'brand.300' : 'gray.700'}
+                    borderRadius="lg"
+                    px={3}
+                    py={3}
+                    textAlign="center"
+                    cursor="pointer"
+                    disabled={isAnyLoading}
+                  >
+                    <Text
+                      color={gameMode === value ? 'brand.300' : 'gray.400'}
+                      fontWeight="700"
+                      fontSize="12px"
+                      letterSpacing="0.5px"
+                    >
+                      {label}
+                    </Text>
+                    <Text color="gray.600" fontSize="10px" mt={0.5}>
+                      {desc}
+                    </Text>
+                  </Box>
+                ))}
+              </HStack>
+            </VStack>
 
             {/* Create Room */}
             <Button
