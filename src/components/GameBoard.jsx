@@ -53,9 +53,9 @@ function GuessRow({ guess, index, isMe, hideTarget = false }) {
         fontSize="15px"
         fontWeight="700"
         letterSpacing="3px"
-        color="gray.100"
+        color={isMe ? 'gray.100' : 'gray.700'}
       >
-        {guess.guess}
+        {isMe ? guess.guess : '????'}
       </Text>
       <Box
         px={2}
@@ -193,7 +193,7 @@ export default function GameBoard({
             </HStack>
           )}
 
-          {/* Guess log */}
+          {/* Guess log — all players visible, but own number hidden for opponents */}
           <Box
             ref={logRef}
             bg="gray.900"
@@ -211,15 +211,18 @@ export default function GameBoard({
               </Text>
             ) : (
               <VStack gap={2} align="stretch">
-                {guesses.map((g, i) => (
-                  <GuessRow
-                    key={i}
-                    guess={g}
-                    index={i}
-                    isMe={myGuestId ? g.byGuestId === myGuestId : g.byNickname === myName}
-                    hideTarget={isSharedMode}
-                  />
-                ))}
+                {guesses.map((g, i) => {
+                  const isMe = myGuestId ? g.byGuestId === myGuestId : g.byNickname === myName
+                  return (
+                    <GuessRow
+                      key={i}
+                      guess={g}
+                      index={i}
+                      isMe={isMe}
+                      hideTarget={isSharedMode}
+                    />
+                  )
+                })}
               </VStack>
             )}
           </Box>

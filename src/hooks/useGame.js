@@ -49,11 +49,14 @@ export function useGame() {
   const [gameOver, setGameOver]       = useState(null)
   const [error, setError]             = useState(null)
 
-  const codeRef = useRef(null)
+  const codeRef    = useRef(null)
+  const attachedTo = useRef(null)   // tracks which socket already has listeners
 
   useEffect(() => () => disconnectSocket(), [])
 
   function _attach(sock) {
+    if (attachedTo.current === sock) return   // already listening on this socket
+    attachedTo.current = sock
     // Re-join the socket.io room on every reconnect
     sock.on('connect', () => {
       if (codeRef.current) {

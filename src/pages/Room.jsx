@@ -21,9 +21,9 @@ export default function Room() {
 
   // Redirect to lobby if no player registered or socket not initialized
   useEffect(() => {
-    if (!player) { navigate('/', { replace: true }); return }
+    if (!player) { navigate('/', { replace: true, state: { joinCode: code } }); return }
     const ok = joinRoom(code)
-    if (!ok) navigate('/', { replace: true })
+    if (!ok) navigate('/', { replace: true, state: { joinCode: code } })
   }, [])
 
   // Warn before reload/close during an active game
