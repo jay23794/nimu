@@ -14,9 +14,9 @@ export default function Room() {
   const game = useGame()
 
   const {
-    phase, roomCode, currentTurn, players, guesses,
-    numberSet, mySecret, gameOver, error,
-    joinRoom, setSecretNumber, makeGuess, rematch,
+    phase, roomCode, gameMode, amHost, currentTurn, players, turnOrder, targetMap, secretsSetCount,
+    guesses, numberSet, mySecret, gameOver, error,
+    joinRoom, startGame, setSecretNumber, makeGuess, rematch,
   } = game
 
   // Redirect to lobby if no player registered or socket not initialized
@@ -31,30 +31,40 @@ export default function Room() {
     if (phase === 'game_over') return
     const guard = (e) => {
       e.preventDefault()
-      // Safari requires a non-empty string assigned to returnValue AND returned
-      // from the handler; Chrome/Firefox only need preventDefault()
-      e.returnValue = 'If you leave, the game will end and your opponent wins.'
+      e.returnValue = 'If you leave, the game will end.'
       return e.returnValue
     }
     window.addEventListener('beforeunload', guard)
     return () => window.removeEventListener('beforeunload', guard)
   }, [phase])
 
-  const me = player?.nickname
   const myGuestId = player?.id
-  const opponent = players.find((p) => p.guestId !== myGuestId)
+  const me = player?.nickname
+  // amHost comes from room_update: server confirmed this socket's player has isHost:true
+  const isHost = amHost
+
+  // Who is the current turn player (full object)
+  const currentTurnPlayer = players.find((p) => p.guestId === currentTurn) ?? null
   const isMyTurn = currentTurn === myGuestId
 
-  // Derive stats from guesses
+  // My target (whose secret I'm guessing)
+  const myTargetGuestId = targetMap[myGuestId]
+  const myTargetName = players.find((p) => p.guestId === myTargetGuestId)?.nickname ?? null
+
+  // Stats
   const myGuesses = guesses.filter((g) => g.byGuestId === myGuestId).length
-  const theirGuesses = guesses.filter((g) => g.byGuestId !== myGuestId).length
+  const totalPlayers = turnOrder.length || players.length
 
   if (phase === 'waiting') {
     return (
       <WaitingLobby
         roomCode={roomCode || code || '…'}
         playerName={me}
-        opponentName={opponent?.nickname || null}
+        players={players}
+        myGuestId={myGuestId}
+        isHost={isHost}
+        gameMode={gameMode}
+        onStartGame={startGame}
         error={error}
       />
     )
@@ -65,6 +75,8 @@ export default function Room() {
       <SetNumber
         numberSet={numberSet}
         onLock={setSecretNumber}
+        playersReady={secretsSetCount}
+        totalPlayers={totalPlayers}
       />
     )
   }
@@ -76,7 +88,9 @@ export default function Room() {
         myName={me}
         myGuestId={myGuestId}
         mySecret={mySecret}
-        opponentName={opponent?.nickname || ''}
+        currentTurnPlayer={currentTurnPlayer}
+        myTargetName={gameMode === 'shared' ? null : myTargetName}
+        isSharedMode={gameMode === 'shared'}
         guesses={guesses}
         onGuess={makeGuess}
       />
@@ -84,20 +98,27 @@ export default function Room() {
   }
 
   if (phase === 'game_over' && gameOver) {
-    const isDisconnect = gameOver.reason === 'opponent_disconnected'
+    const isDisconnect = gameOver.reason === 'player_disconnected'
     const result = isDisconnect
       ? 'disconnect'
       : gameOver.winnerGuestId === myGuestId
       ? 'win'
       : 'lose'
 
+    // In shared mode everyone sees the same revealed number; no personal "your number" reveal
+    const showMyNumber = gameMode === 'standard' && !isDisconnect && gameOver.winnerGuestId !== myGuestId
+
     return (
       <GameOver
         result={result}
+        isSharedMode={gameMode === 'shared'}
+        winnerName={gameOver.winnerNickname}
+        crackedPlayerName={gameOver.crackedNickname}
         theirNumber={gameOver.secret}
+        myNumber={showMyNumber ? mySecret : null}
         totalTurns={gameOver.totalTurns || 0}
         myGuesses={myGuesses}
-        theirGuesses={theirGuesses}
+        totalPlayers={totalPlayers}
         onRematch={rematch}
         onLeave={() => navigate('/')}
       />

@@ -9,6 +9,8 @@ export interface IRoom extends Document {
   winnerGuestId: string | null;
   isPublic: boolean;
   gameType: string;
+  gameMode: string;
+  sharedSecret: string | null;
 }
 
 const ROOM_STATUSES: RoomStatus[] = ['LOBBY', 'SET_NUMBER', 'GUESSING', 'FINISHED'];
@@ -16,6 +18,7 @@ const ROOM_STATUSES: RoomStatus[] = ['LOBBY', 'SET_NUMBER', 'GUESSING', 'FINISHE
 const guessSchema = new Schema<GuessEntry>(
   {
     byGuestId: { type: String, required: true },
+    targetGuestId: { type: String },
     guessedNumber: { type: String, required: true },
     correctDigits: { type: Number, required: true },
     turnNumber: { type: Number, required: true },
@@ -41,6 +44,8 @@ const roomSchema = new Schema<IRoom>(
     winnerGuestId: { type: String, default: null },
     isPublic: { type: Boolean, default: true },
     gameType: { type: String, default: 'standard' },
+    gameMode: { type: String, enum: ['standard', 'shared'], default: 'standard' },
+    sharedSecret: { type: String, default: null },
   },
   { timestamps: true },
 );

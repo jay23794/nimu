@@ -10,13 +10,14 @@ import { getSocket, disconnectSocket } from '../socket/socket'
     phase_change({ phase })
     your_turn({ guestId })
     number_set()
-    guess_result({ byGuestId, byNickname, guess, correctDigits, turnNumber })
-    game_over({ winnerGuestId, winnerNickname, secret, totalTurns, reason? })
+    guess_result({ byGuestId, byNickname, targetGuestId, targetNickname, guess, correctDigits, turnNumber })
+    game_over({ winnerGuestId, winnerNickname, crackedGuestId, crackedNickname, secret, totalTurns, reason? })
     player_left({ guestId, nickname })
     error({ message })
 
   Client → Server:
     join_room({ code })
+    start_game({ code })
     set_number({ code, number })
     make_guess({ code, guess })
     rematch({ code })
@@ -33,23 +34,27 @@ function mapPhase(serverPhase) {
 }
 
 export function useGame() {
-  const [phase, setPhase]         = useState('waiting')
-  const [roomCode, setRoomCode]   = useState(null)
-  const [currentTurn, setTurn]    = useState(null)  // guestId of whose turn it is
-  const [players, setPlayers]     = useState([])
-  const [guesses, setGuesses]     = useState([])
-  const [numberSet, setNumberSet] = useState(false)
-  const [mySecret, setMySecret]   = useState(null)
-  const [gameOver, setGameOver]   = useState(null)
-  const [error, setError]         = useState(null)
+  const [phase, setPhase]             = useState('waiting')
+  const [roomCode, setRoomCode]       = useState(null)
+  const [gameMode, setGameMode]       = useState('standard') // 'standard' | 'shared'
+  const [currentTurn, setTurn]        = useState(null)
+  const [players, setPlayers]         = useState([])
+  const [amHost, setAmHost]           = useState(false)  // whether the local player is the host
+  const [turnOrder, setTurnOrder]     = useState([])
+  const [targetMap, setTargetMap]     = useState({})
+  const [secretsSetCount, setSecretsSetCount] = useState(0)
+  const [guesses, setGuesses]         = useState([])
+  const [numberSet, setNumberSet]     = useState(false)
+  const [mySecret, setMySecret]       = useState(null)
+  const [gameOver, setGameOver]       = useState(null)
+  const [error, setError]             = useState(null)
 
   const codeRef = useRef(null)
 
   useEffect(() => () => disconnectSocket(), [])
 
   function _attach(sock) {
-    // Re-join the socket.io room on every reconnect (handles Render's proxy
-    // timeouts and server restarts that drop the WebSocket connection)
+    // Re-join the socket.io room on every reconnect
     sock.on('connect', () => {
       if (codeRef.current) {
         sock.emit('join_room', { code: codeRef.current })
@@ -58,11 +63,21 @@ export function useGame() {
 
     sock.on('room_update', (state) => {
       setRoomCode(state.code)
+      setGameMode(state.gameMode ?? 'standard')
       setPlayers(state.players ?? [])
       setTurn(state.currentTurn ?? null)
+      setTurnOrder(state.turnOrder ?? [])
+      setTargetMap(state.targetMap ?? {})
       setPhase(mapPhase(state.status))
       codeRef.current = state.code
       setError(null)
+      // Track whether the local socket's player is the host
+      const myGuestId = sock.auth?.guestId
+      const meInRoom = (state.players ?? []).find(p => p.guestId === myGuestId)
+      if (meInRoom) setAmHost(!!meInRoom.isHost)
+      // In standard mode count secrets set (exclude the __shared__ key)
+      const secretKeys = Object.keys(state.secretNumbers ?? {}).filter(k => k !== '__shared__')
+      setSecretsSetCount(secretKeys.length)
     })
 
     sock.on('phase_change', ({ phase: p }) => {
@@ -72,6 +87,7 @@ export function useGame() {
         setMySecret(null)
         setGuesses([])
         setGameOver(null)
+        setSecretsSetCount(0)
       }
     })
 
@@ -93,7 +109,7 @@ export function useGame() {
     })
 
     sock.on('player_left', () => {
-      // game_over follows immediately when game was live
+      // room_update follows to reflect updated player list
     })
 
     sock.on('error', ({ message }) => {
@@ -107,11 +123,16 @@ export function useGame() {
     if (!sock) return false
     codeRef.current = code
     _attach(sock)
-    // If already connected emit now; if not, the 'connect' handler will emit once connected
     if (sock.connected) {
       sock.emit('join_room', { code })
     }
     return true
+  }
+
+  function startGame() {
+    const sock = getSocket()
+    if (!sock) return
+    sock.emit('start_game', { code: codeRef.current })
   }
 
   function setSecretNumber(number) {
@@ -136,14 +157,20 @@ export function useGame() {
   return {
     phase,
     roomCode,
+    gameMode,
+    amHost,
     currentTurn,
     players,
+    turnOrder,
+    targetMap,
+    secretsSetCount,
     guesses,
     numberSet,
     mySecret,
     gameOver,
     error,
     joinRoom,
+    startGame,
     setSecretNumber,
     makeGuess,
     rematch,

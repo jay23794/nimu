@@ -1,4 +1,5 @@
 export type RoomStatus = 'LOBBY' | 'SET_NUMBER' | 'GUESSING' | 'FINISHED';
+export type GameMode = 'standard' | 'shared';
 
 export interface RoomPlayer {
   guestId: string;
@@ -8,6 +9,7 @@ export interface RoomPlayer {
 
 export interface GuessEntry {
   byGuestId: string;
+  targetGuestId?: string; // whose number was being guessed (optional for backward compat)
   guessedNumber: string;
   correctDigits: number;
   turnNumber: number;
@@ -16,8 +18,14 @@ export interface GuessEntry {
 export interface RedisRoomState {
   code: string;
   status: RoomStatus;
+  gameMode: GameMode;
   players: RoomPlayer[];
   currentTurn: string | null;
+  /** Ordered guestIds for round-robin turns */
+  turnOrder: string[];
+  /** Maps guestId → the guestId of the player whose secret they are guessing.
+   *  In 'shared' mode every entry maps to '__shared__'. */
+  targetMap: Record<string, string>;
   secretNumbers: Record<string, string>;
   guesses: GuessEntry[];
   turnCount: number;
@@ -27,6 +35,8 @@ export interface RedisRoomState {
 export interface GuessResult {
   byGuestId: string;
   byNickname: string;
+  targetGuestId: string;
+  targetNickname: string;
   guess: string;
   correctDigits: number;
   turnNumber: number;
@@ -35,9 +45,11 @@ export interface GuessResult {
 export interface GameOverPayload {
   winnerGuestId: string;
   winnerNickname: string;
+  crackedGuestId: string;    // '__shared__' in shared mode, otherwise the player whose number was cracked
+  crackedNickname: string;
   secret: string | null;
   totalTurns: number;
-  reason?: 'opponent_disconnected';
+  reason?: 'player_disconnected';
 }
 
 // ── Socket.IO event maps ────────────────────────────────────────────────────
@@ -55,6 +67,7 @@ export interface ServerToClientEvents {
 
 export interface ClientToServerEvents {
   join_room: (data?: { code?: string }) => void;
+  start_game: (data: { code: string }) => void;
   set_number: (data: { code: string; number: string | number }) => void;
   make_guess: (data: { code: string; guess: string | number }) => void;
   rematch: (data: { code: string }) => void;

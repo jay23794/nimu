@@ -8,7 +8,7 @@ import {
   Input,
 } from '@chakra-ui/react'
 
-export default function SetNumber({ numberSet = false, onLock }) {
+export default function SetNumber({ numberSet = false, onLock, playersReady = 0, totalPlayers = 2 }) {
   const [digits, setDigits] = useState(['', '', '', ''])
   const refs = [useRef(), useRef(), useRef(), useRef()]
 
@@ -56,7 +56,7 @@ export default function SetNumber({ numberSet = false, onLock }) {
             Pick Your Number
           </Text>
           <Text color="gray.500" fontSize="sm" textAlign="center">
-            Choose a secret 4-digit number. Your opponent will try to crack it.
+            Choose a secret 4-digit number. Your target will try to crack it.
           </Text>
         </VStack>
 
@@ -116,7 +116,9 @@ export default function SetNumber({ numberSet = false, onLock }) {
             >
               <Text color="brand.300" fontWeight="700" fontSize="lg">✓ NUMBER LOCKED</Text>
             </HStack>
-            <Text color="gray.500" fontSize="sm">Waiting for opponent…</Text>
+            <Text color="gray.500" fontSize="sm">
+              {playersReady}/{totalPlayers} players ready…
+            </Text>
           </VStack>
         )}
       </VStack>
