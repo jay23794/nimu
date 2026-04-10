@@ -6,7 +6,8 @@
       "Bash(find /Users/jay/Projects/Outsource/nimu/server/src -name \"*.js\" -delete)",
       "Bash(npx tsc:*)",
       "Bash(git rm:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(find /Users/jay/Projects/Outsource/nimu -type f \\\\\\(-name Dockerfile -o -name docker-compose.yml -o -name .github -o -name *.config.* \\\\\\))"
     ]
   }
 }
